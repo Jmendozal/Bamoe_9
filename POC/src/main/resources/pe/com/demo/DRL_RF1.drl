@@ -1,0 +1,105 @@
+package pe.com.demo;
+
+import pe.com.demo.ModeloResponse;
+import pe.com.demo.Venta;
+
+rule "Paso_1"
+  dialect "java"
+  ruleflow-group "RF1_Demo"
+  lock-on-active true
+  salience 1
+
+when
+   $output: ModeloResponse();
+   $input: ModeloRequest($objVenta:datosVenta, datosVenta != null)
+   $resul: Venta(estadoContrato in ("NoResuelto"), montoCIAContrato == montoCIAPagado) from $objVenta
+
+then
+
+  $resul.setSeConsidera(true);
+  update($input);
+  System.out.println("Entro Paso 1");
+
+end
+
+rule "Paso_2"
+  dialect "java"
+  ruleflow-group "RF1_Demo"
+  lock-on-active true
+  salience 2
+
+when
+   $output: ModeloResponse();
+   $input: ModeloRequest(cuotaPremioAuto == null, cuotaPremioSemiNuevo == null)
+
+then
+  $input.setIndAplicaPremio(false);
+  update($input);
+  $output.setMensaje("Se termina el proceso, no existe un premio disponible para el vendedor");
+  System.out.println("Entro Paso 2");
+
+end
+
+rule "Paso_3_Aplica_Premio"
+  dialect "java"
+  ruleflow-group "RF1_Demo"
+  no-loop
+
+when
+   $output: ModeloResponse();
+   $input: ModeloRequest(cuotaPremioAuto != null, cuotaPremioSemiNuevo != null);
+
+then
+    int numCuotas = 0;
+    double sumaMonto = 0.0;
+    double cuPremioAuto = 0; 
+    double cuPremioSemiNuevo = 0;
+      for (Venta res : $input.getDatosVenta()) {
+          if (res.getSeConsidera() == true){
+              sumaMonto += res.getMontoCIAPagado();
+              numCuotas++;
+          }
+      }
+    $input.setSumaMonto(sumaMonto);
+    $input.setNumCertificados(numCuotas);
+    cuPremioAuto = 0.75 * $input.getCuotaPremioAuto();
+    cuPremioSemiNuevo = 0.75 * $input.getCuotaPremioSemiNuevo();
+
+      if (sumaMonto < cuPremioAuto || sumaMonto < cuPremioSemiNuevo ){
+          $output.setMensaje("No cumple con el 75% de monto de cuota requerido");
+          $input.setIndAplicaPremio(false);
+      } else{
+          $input.setIndAplicaPremio(true);
+      }
+  
+  update($input);
+  System.out.println("Entro Paso 3 - Numero Certificados: "+ numCuotas);
+  System.out.println("Entro Paso 3 - Suma Monto: "+ sumaMonto);
+  System.out.println("Entro Paso 3 - cuPremioAuto 75%: "+ cuPremioAuto);
+  System.out.println("Entro Paso 3 - cuPremioSemiNuevo 75%: "+ cuPremioSemiNuevo);
+
+end
+
+rule "Paso_3_Porcentaje_Cumplimiento"
+  dialect "java"
+  ruleflow-group "RF1_Demo"
+  no-loop
+
+when
+   $output: ModeloResponse();
+   $input: ModeloRequest(cuotaPremioAuto != null, cuotaPremioSemiNuevo != null, indAplicaPremio == true);
+
+then
+ double porcentajePremioAuto, porcentajeSemiNuevo, porcentajeCuota = 0;
+
+ porcentajePremioAuto = ($input.getSumaMonto() * 100)/$input.getCuotaPremioAuto();
+ porcentajeSemiNuevo = ($input.getSumaMonto() * 100)/$input.getCuotaPremioSemiNuevo();
+ 
+ porcentajeCuota = (porcentajePremioAuto + porcentajeSemiNuevo)/2;
+ 
+ $input.setPorcentajeCuota(porcentajeCuota);
+ update($input);
+ System.out.println("Entro Paso_3_Porcentaje_Cumplimiento - porcentajeCuota: "+ porcentajeCuota);
+
+end
+

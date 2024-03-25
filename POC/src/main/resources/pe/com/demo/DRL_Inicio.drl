@@ -1,0 +1,18 @@
+package pe.com.demo;
+
+import java.util.ArrayList;
+import pe.com.demo.ModeloRequest;
+
+rule "InicioCalculoPremios-api"
+  dialect "java"
+  ruleflow-group "InicCalculoPremios"
+  no-loop
+
+when
+   $input: ModeloRequest( )
+   $output: ModeloResponse( )
+   
+then
+
+
+end

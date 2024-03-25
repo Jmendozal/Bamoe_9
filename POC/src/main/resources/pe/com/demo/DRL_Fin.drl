@@ -1,0 +1,22 @@
+package pe.com.demo;
+
+import pe.com.demo.ModeloResponse;
+
+rule "FinCalculoPremios-api"
+  dialect "java"
+  ruleflow-group "FinCalculoPremios"
+  no-loop
+
+ when
+  $output: ModeloResponse( )
+  $input: ModeloRequest(indAplicaPremio == true)
+
+ then
+ 
+  $output.setCodVendedor($input.getCodVendedor());
+  $output.setMesCalculado($input.getMesCalculo());
+  $output.setPagoRVPremio(($input.getPremio()*$input.getPorcentajePremioPagar())/100);
+  update($output);
+  System.out.println("Entro FinCalculoPremios-api - PagoRVPremio: "+ $output.getPagoRVPremio());
+
+end
